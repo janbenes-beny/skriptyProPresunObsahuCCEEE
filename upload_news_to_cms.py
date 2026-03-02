@@ -426,13 +426,13 @@ def _upload_media_for_article(page: Page, article: Article) -> None:
             page.wait_for_timeout(500)
 
             # U souboru vypneme vykreslovani PDF nahledu (IsPreviewRendered).
-            for _ in range(5):
-                unchecked = page.evaluate(
+            expected_checkboxes = len(file_paths)
+            last_stats = {"total": 0, "checked": 0, "changed": 0}
+            for _ in range(20):
+                stats = page.evaluate(
                     """() => {
                         const checkboxes = Array.from(
-                          document.querySelectorAll(
-                            'input[type="checkbox"].form-check-input'
-                          )
+                          document.querySelectorAll('input[type="checkbox"]')
                         ).filter(el => {
                           const id = el.id || '';
                           const name = el.name || '';
@@ -450,16 +450,28 @@ def _upload_media_for_article(page: Page, article: Article) -> None:
                             changed += 1;
                           }
                         }
-                        return { total: checkboxes.length, changed };
+                        const checked = checkboxes.filter(cb => cb.checked).length;
+                        return { total: checkboxes.length, checked, changed };
                     }"""
                 )
-                if unchecked.get("total", 0) > 0:
-                    print(
-                        "[INFO] IsPreviewRendered checkboxu nalezeno: "
-                        f"{unchecked.get('total', 0)}, odskrtnuto: {unchecked.get('changed', 0)}"
-                    )
+                last_stats = stats
+                if (
+                    stats.get("total", 0) >= expected_checkboxes
+                    and stats.get("checked", 0) == 0
+                ):
                     break
                 page.wait_for_timeout(500)
+
+            print(
+                "[INFO] IsPreviewRendered checkboxu nalezeno: "
+                f"{last_stats.get('total', 0)}, zbyva zaskrtnuto: "
+                f"{last_stats.get('checked', 0)}, odskrtnuto v poslednim kroku: "
+                f"{last_stats.get('changed', 0)}"
+            )
+            if last_stats.get("checked", 0) > 0:
+                print(
+                    "[WARN] Nepodarilo se odskrtnout vsechny IsPreviewRendered checkboxy."
+                )
         except Exception as exc:  # noqa: BLE001
             print(
                 "[WARN] Nepodarilo se nahrat soubory do "

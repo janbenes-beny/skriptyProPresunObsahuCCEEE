@@ -275,9 +275,6 @@ async def main() -> None:
     ok = 0
     failed = 0
 
-    # Testovací běh: maximální počet článků ke stažení
-    max_test_articles = 3
-
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context(
@@ -287,10 +284,6 @@ async def main() -> None:
 
         for index, url in enumerate(urls):
             article_id = index + 1
-
-            # Při testovacím běhu zpracujeme jen prvních pár článků
-            if article_id > max_test_articles:
-                break
 
             if not url or not isinstance(url, str):
                 logger.warning("Přeskočeno ID=%s (neplatná URL)", article_id)
